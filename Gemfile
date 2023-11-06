@@ -30,7 +30,7 @@ gem 'jwt'
 gem 'bcrypt'
 gem 'mysql2'
 gem 'pry'
-
+gem 'rspec-rails'
 # Use Redis adapter to run Action Cable in production
 # gem "redis", "~> 4.0"
 

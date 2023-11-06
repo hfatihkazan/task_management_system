@@ -72,7 +72,7 @@ class TasksController < ApplicationController
       task = Task.new(task_obj)
       task.save
     end
-    render json: { status: 200 }
+    render json: { status: 200, task: task }
   end
 
   private
@@ -81,16 +81,20 @@ class TasksController < ApplicationController
       user_availability = []
       User.where(role:0).each do |user|
         total_task_point = 0
-        user.tasks.select(:story_point).each do |task|
-          total_task_point += task.story_point
+        begin
+          user.tasks.where.not(status:2).select(:story_point).each do |task|
+            total_task_point += task.story_point
+          end
+          user_availability.push(
+            {
+              user_id: user.id,
+              availability: total_task_point.to_f / user.story_point_capability
+            })
+        rescue => e
+          puts e
         end
-        user_availability.push(
-          {
-                                 user_id: user.id,
-                                 availability: total_task_point / user.story_point_capability
-       })
       end
-      user_availability.sort_by{|obj| obj[:value]}[0][:user_id]
+      user_availability.sort_by{|obj| obj[:availability]}.first[:user_id]
     end
     # Use callbacks to share common setup or constraints between actions.
     def set_task

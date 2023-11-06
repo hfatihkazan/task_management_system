@@ -21,7 +21,8 @@ Things you may want to cover:
 
 
 * How to run the test suite
-    - Sorry i had no change for developing test.
+    - If you create database and install bundle for test environment
+      * You can run "RAILS_ENV=test rails spec" command or if you can change to test environment please run "rails spec"
 
 
 * All this steps, you could run 
@@ -35,4 +36,3 @@ Things you may want to cover:
     * mail: developer1@gmail.com password: qwer1234
     * mail: developer2@gmail.com password: qwer1234
     * mail: pm1@gmail.com password: qwer1234
-    

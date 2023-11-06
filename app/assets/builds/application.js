@@ -32973,19 +32973,28 @@
         end: true
       };
     }
-    let [matcher, paramNames] = compilePath(pattern.path, pattern.caseSensitive, pattern.end);
+    let [matcher, compiledParams] = compilePath(pattern.path, pattern.caseSensitive, pattern.end);
     let match2 = pathname.match(matcher);
     if (!match2)
       return null;
     let matchedPathname = match2[0];
     let pathnameBase = matchedPathname.replace(/(.)\/+$/, "$1");
     let captureGroups = match2.slice(1);
-    let params = paramNames.reduce((memo, paramName, index2) => {
+    let params = compiledParams.reduce((memo, _ref3, index2) => {
+      let {
+        paramName,
+        isOptional
+      } = _ref3;
       if (paramName === "*") {
         let splatValue = captureGroups[index2] || "";
         pathnameBase = matchedPathname.slice(0, matchedPathname.length - splatValue.length).replace(/(.)\/+$/, "$1");
       }
-      memo[paramName] = safelyDecodeURIComponent(captureGroups[index2] || "", paramName);
+      const value = captureGroups[index2];
+      if (isOptional && !value) {
+        memo[paramName] = void 0;
+      } else {
+        memo[paramName] = safelyDecodeURIComponent(value || "", paramName);
+      }
       return memo;
     }, {});
     return {
@@ -33003,13 +33012,18 @@
       end = true;
     }
     warning(path === "*" || !path.endsWith("*") || path.endsWith("/*"), 'Route path "' + path + '" will be treated as if it were ' + ('"' + path.replace(/\*$/, "/*") + '" because the `*` character must ') + "always follow a `/` in the pattern. To get rid of this warning, " + ('please change the route path to "' + path.replace(/\*$/, "/*") + '".'));
-    let paramNames = [];
-    let regexpSource = "^" + path.replace(/\/*\*?$/, "").replace(/^\/*/, "/").replace(/[\\.*+^$?{}|()[\]]/g, "\\$&").replace(/\/:(\w+)/g, (_, paramName) => {
-      paramNames.push(paramName);
-      return "/([^\\/]+)";
+    let params = [];
+    let regexpSource = "^" + path.replace(/\/*\*?$/, "").replace(/^\/*/, "/").replace(/[\\.*+^${}|()[\]]/g, "\\$&").replace(/\/:(\w+)(\?)?/g, (_, paramName, isOptional) => {
+      params.push({
+        paramName,
+        isOptional: isOptional != null
+      });
+      return isOptional ? "/?([^\\/]+)?" : "/([^\\/]+)";
     });
     if (path.endsWith("*")) {
-      paramNames.push("*");
+      params.push({
+        paramName: "*"
+      });
       regexpSource += path === "*" || path === "/*" ? "(.*)$" : "(?:\\/(.+)|\\/*)$";
     } else if (end) {
       regexpSource += "\\/*$";
@@ -33018,7 +33032,7 @@
     } else
       ;
     let matcher = new RegExp(regexpSource, caseSensitive ? void 0 : "i");
-    return [matcher, paramNames];
+    return [matcher, params];
   }
   function safelyDecodeURI(value) {
     try {
@@ -33888,12 +33902,16 @@
   }
   var _excluded = ["onClick", "relative", "reloadDocument", "replace", "state", "target", "to", "preventScrollReset", "unstable_viewTransition"];
   var _excluded2 = ["aria-current", "caseSensitive", "className", "end", "style", "to", "unstable_viewTransition", "children"];
-  var _excluded3 = ["reloadDocument", "replace", "state", "method", "action", "onSubmit", "submit", "relative", "preventScrollReset", "unstable_viewTransition"];
+  var _excluded3 = ["fetcherKey", "navigate", "reloadDocument", "replace", "state", "method", "action", "onSubmit", "relative", "preventScrollReset", "unstable_viewTransition"];
   var ViewTransitionContext = /* @__PURE__ */ React2.createContext({
     isTransitioning: false
   });
   if (true) {
     ViewTransitionContext.displayName = "ViewTransition";
+  }
+  var FetchersContext = /* @__PURE__ */ React2.createContext(/* @__PURE__ */ new Map());
+  if (true) {
+    FetchersContext.displayName = "Fetchers";
   }
   var START_TRANSITION2 = "startTransition";
   var startTransitionImpl2 = React2[START_TRANSITION2];
@@ -34084,33 +34102,25 @@
   if (true) {
     NavLink.displayName = "NavLink";
   }
-  var Form = /* @__PURE__ */ React2.forwardRef((props, ref) => {
-    let submit = useSubmit();
-    return /* @__PURE__ */ React2.createElement(FormImpl, _extends3({}, props, {
-      submit,
-      ref
-    }));
-  });
-  if (true) {
-    Form.displayName = "Form";
-  }
-  var FormImpl = /* @__PURE__ */ React2.forwardRef((_ref9, forwardedRef) => {
+  var Form = /* @__PURE__ */ React2.forwardRef((_ref9, forwardedRef) => {
     let {
+      fetcherKey,
+      navigate,
       reloadDocument,
       replace: replace2,
       state,
       method = defaultMethod,
       action,
       onSubmit,
-      submit,
       relative,
       preventScrollReset,
       unstable_viewTransition
     } = _ref9, props = _objectWithoutPropertiesLoose(_ref9, _excluded3);
-    let formMethod = method.toLowerCase() === "get" ? "get" : "post";
+    let submit = useSubmit();
     let formAction = useFormAction(action, {
       relative
     });
+    let formMethod = method.toLowerCase() === "get" ? "get" : "post";
     let submitHandler = (event) => {
       onSubmit && onSubmit(event);
       if (event.defaultPrevented)
@@ -34119,7 +34129,9 @@
       let submitter = event.nativeEvent.submitter;
       let submitMethod = (submitter == null ? void 0 : submitter.getAttribute("formmethod")) || method;
       submit(submitter || event.currentTarget, {
+        fetcherKey,
         method: submitMethod,
+        navigate,
         replace: replace2,
         state,
         relative,
@@ -34135,7 +34147,7 @@
     }, props));
   });
   if (true) {
-    FormImpl.displayName = "FormImpl";
+    Form.displayName = "Form";
   }
   function ScrollRestoration(_ref10) {
     let {
@@ -34161,6 +34173,7 @@
   })(DataRouterHook2 || (DataRouterHook2 = {}));
   var DataRouterStateHook2;
   (function(DataRouterStateHook3) {
+    DataRouterStateHook3["UseFetcher"] = "useFetcher";
     DataRouterStateHook3["UseFetchers"] = "useFetchers";
     DataRouterStateHook3["UseScrollRestoration"] = "useScrollRestoration";
   })(DataRouterStateHook2 || (DataRouterStateHook2 = {}));
@@ -34210,6 +34223,8 @@
       throw new Error("You are calling submit during the server render. Try calling submit within a `useEffect` or callback instead.");
     }
   }
+  var fetcherId = 0;
+  var getUniqueFetcherId = () => "__" + String(++fetcherId) + "__";
   function useSubmit() {
     let {
       router
@@ -34230,17 +34245,28 @@
         formData,
         body
       } = getFormSubmissionInfo(target, basename);
-      router.navigate(options2.action || action, {
-        preventScrollReset: options2.preventScrollReset,
-        formData,
-        body,
-        formMethod: options2.method || method,
-        formEncType: options2.encType || encType,
-        replace: options2.replace,
-        state: options2.state,
-        fromRouteId: currentRouteId,
-        unstable_viewTransition: options2.unstable_viewTransition
-      });
+      if (options2.navigate === false) {
+        let key = options2.fetcherKey || getUniqueFetcherId();
+        router.fetch(key, currentRouteId, options2.action || action, {
+          preventScrollReset: options2.preventScrollReset,
+          formData,
+          body,
+          formMethod: options2.method || method,
+          formEncType: options2.encType || encType
+        });
+      } else {
+        router.navigate(options2.action || action, {
+          preventScrollReset: options2.preventScrollReset,
+          formData,
+          body,
+          formMethod: options2.method || method,
+          formEncType: options2.encType || encType,
+          replace: options2.replace,
+          state: options2.state,
+          fromRouteId: currentRouteId,
+          unstable_viewTransition: options2.unstable_viewTransition
+        });
+      }
     }, [router, basename, currentRouteId]);
   }
   function useFormAction(action, _temp2) {
@@ -34275,11 +34301,11 @@
   }
   var SCROLL_RESTORATION_STORAGE_KEY = "react-router-scroll-positions";
   var savedScrollPositions = {};
-  function useScrollRestoration(_temp3) {
+  function useScrollRestoration(_temp4) {
     let {
       getKey,
       storageKey
-    } = _temp3 === void 0 ? {} : _temp3;
+    } = _temp4 === void 0 ? {} : _temp4;
     let {
       router
     } = useDataRouterContext2(DataRouterHook2.UseScrollRestoration);
@@ -44979,7 +45005,7 @@ react-is/cjs/react-is.development.js:
 
 @remix-run/router/dist/router.js:
   (**
-   * @remix-run/router v1.10.0
+   * @remix-run/router v1.11.0
    *
    * Copyright (c) Remix Software Inc.
    *
@@ -44991,7 +45017,7 @@ react-is/cjs/react-is.development.js:
 
 react-router/dist/index.js:
   (**
-   * React Router v6.17.0
+   * React Router v6.18.0
    *
    * Copyright (c) Remix Software Inc.
    *
@@ -45003,7 +45029,7 @@ react-router/dist/index.js:
 
 react-router-dom/dist/index.js:
   (**
-   * React Router DOM v6.17.0
+   * React Router DOM v6.18.0
    *
    * Copyright (c) Remix Software Inc.
    *
@@ -45015,7 +45041,7 @@ react-router-dom/dist/index.js:
 
 @mui/styled-engine/index.js:
   (**
-   * @mui/styled-engine v5.14.15
+   * @mui/styled-engine v5.14.16
    *
    * @license MIT
    * This source code is licensed under the MIT license found in the

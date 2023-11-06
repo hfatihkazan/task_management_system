@@ -23,6 +23,9 @@ development:
 test:
   <<: *default
   database: task_manager_test
+  username: root
+  password: qwer1234
+  host: localhost
 
 production:
   <<: *default
